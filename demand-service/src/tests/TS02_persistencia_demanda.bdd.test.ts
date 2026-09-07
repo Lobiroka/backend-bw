@@ -97,7 +97,10 @@ describe('TS02 [BDD] - Persistência de nova demanda urbana', () => {
   describe('Cenário: Cidadão autenticado cria uma demanda válida', () => {
 
     it(
-      'Given um cidadão autenticado com token JWT válido, When envia POST /demandas com todos os campos obrigatórios, Then retorna 201 com os dados persistidos no banco',
+      'Given um cidadão autenticado com token JWT válido, ' +
+        'When envia POST /demandas com todos os campos obrigatórios, ' +
+        'Then retorna 201 com os dados persistidos no banco',
+
       async () => {
         const res = await request(app)
           .post('/demandas')
@@ -160,7 +163,10 @@ describe('TS02 [BDD] - Persistência de nova demanda urbana', () => {
   describe('Cenário: Gestor tenta criar demanda', () => {
 
     it(
-      'Given um gestor autenticado, When envia POST /demandas, Then retorna 403 com mensagem "Acesso restrito a cidadãos"',
+      'Given um gestor autenticado, ' +
+        'When envia POST /demandas, ' +
+        'Then retorna 403 com mensagem "Acesso restrito a cidadãos"',
+
       async () => {
         const res = await request(app)
           .post('/demandas')
