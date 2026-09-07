@@ -19,6 +19,11 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Criar arquivo .env temporário para o Docker
+        run: |
+          echo "DATABASE_URL_AUTH=postgresql://postgres:postgres@localhost:5432/auth" >> .env
+          echo "DATABASE_URL_DEMAND=postgresql://postgres:postgres@localhost:5432/demand" >> .env
+
       - name: Subir infraestrutura (Docker Compose)
         run: docker compose up -d
 
