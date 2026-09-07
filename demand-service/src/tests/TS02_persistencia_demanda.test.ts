@@ -14,18 +14,15 @@ let usuarioIdTeste: number;
 let usuarioIdGestor: number;
 
 const demandaValida = {
-  titulo: 'Poste sem luz na esquina',
-  categoria: 'ILUMINACAO_PUBLICA',
-  regiao: 'REGIAO_METROPOLITANA_DO_RECIFE',
-  descricao: 'Poste apagado há 3 dias, rua sem iluminação à noite.',
-  prioridade: 'ALTA',
-  numero: '45',
-  cep: '50000-000',
-  bairro: 'Boa Viagem',
-  cidade: 'Recife',
-  rua: 'Av. Boa Viagem',
+  titulo: 'Buraco na via',
+  descricao: 'Cratera perigosa',
+  categoria: 'SANEAMENTO',
+  regiao: 'OUTRA',
+  endereco: 'Rua do Teste Automatizado, 123',
+  prioridade: 'MEDIA',
+  latitude: -8.047562,
+  longitude: -34.877002,
 };
-
 const idsParaLimpar: number[] = [];
 
 beforeAll(async () => {
@@ -74,7 +71,7 @@ describe('TS02 - Persistência de nova demanda urbana', () => {
         .set('Authorization', `Bearer ${tokenGestor}`)
         .send(demandaValida);
       expect(res.status).toBe(403);
-      expect(res.body.error).toBe('Acesso restrito a cidadãos');
+      expect(res.body.error).toBe('Acesso negado para este perfil');
     });
   });
 

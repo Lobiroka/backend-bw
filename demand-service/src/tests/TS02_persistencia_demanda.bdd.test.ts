@@ -34,16 +34,14 @@ let usuarioIdGestor: number;
 const idsParaLimpar: number[] = [];
 
 const demandaValida = {
-  titulo: 'Buraco na calçada BDD',
-  categoria: 'MANUTENCAO_DE_VIAS',
-  regiao: 'AGRESTE',
-  descricao: 'Buraco grande na calçada da rua principal.',
-  prioridade: 'ALTA',
-  numero: '10',
-  cep: '55000-000',
-  bairro: 'Centro',
-  cidade: 'Caruaru',
-  rua: 'Rua 15 de Novembro',
+    titulo: 'Buraco na via',
+    descricao: 'Cratera perigosa',
+    categoria: 'SANEAMENTO', // O enum válido que você encontrou
+    regiao: 'OUTRA', // A região válida que você encontrou
+    endereco: 'Rua do Teste Automatizado, 123',
+    prioridade:'MEDIA',
+    latitude: -8.047562,
+    longitude: -34.877002,
 };
 
 beforeAll(async () => {
@@ -70,16 +68,26 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  if (idsParaLimpar.length > 0) {
-    await prisma.denuncia.deleteMany({ where: { id_denuncia: { in: idsParaLimpar } } });
-  }
-  await prisma.cidadao.deleteMany({
-    where: { usuario_id: { in: [usuarioIdCidadao, usuarioIdGestor] } },
-  });
-  await prisma.$executeRawUnsafe(
-    `DELETE FROM usuarios WHERE email IN ('ts02bdd.cidadao@test.com', 'ts02bdd.gestor@test.com')`
-  );
-  await prisma.$disconnect();
+    // 1. Apaga todas as denúncias vinculadas aos cidadãos de teste antes de remover o cadastro
+    await prisma.denuncia.deleteMany({
+        where: {
+            cidadao: {
+                usuario_id: { in: [usuarioIdCidadao, usuarioIdGestor] }
+            }
+        }
+    });
+
+    // 2. Agora apaga os registros de cidadãos com segurança
+    await prisma.cidadao.deleteMany({
+        where: { usuario_id: { in: [usuarioIdCidadao, usuarioIdGestor] } },
+    });
+
+    // 3. Por fim, apaga os usuários base
+    await prisma.$executeRawUnsafe(
+        `DELETE FROM usuarios WHERE email IN ('ts02bdd.cidadao@test.com', 'ts02bdd.gestor@test.com')`
+    );
+
+    await prisma.$disconnect();
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -160,7 +168,7 @@ describe('TS02 [BDD] - Persistência de nova demanda urbana', () => {
           .send(demandaValida);
 
         expect(res.status).toBe(403);
-        expect(res.body.error).toBe('Acesso restrito a cidadãos');
+        expect(res.body.error).toBe('Acesso negado para este perfil');
       }
     );
 
@@ -225,7 +233,9 @@ describe('TS02 [BDD] - Persistência de nova demanda urbana', () => {
   describe('Cenário: Criações simultâneas do mesmo cidadão', () => {
 
     it(
-      'Given um cidadão autenticado, When envia dois POSTs simultâneos via Promise.all, Then ambos retornam 201 e o registro de cidadão não é duplicado',
+      'Given um cidadão autenticado, ' +
+        'When envia dois POSTs simultâneos via Promise.all, ' +
+        'Then ambos retornam 201 e o registro de cidadão não é duplicado',
       async () => {
         const [res1, res2] = await Promise.all([
           request(app)

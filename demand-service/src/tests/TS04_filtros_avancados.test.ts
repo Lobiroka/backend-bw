@@ -24,7 +24,7 @@
 // COMANDO:
 //   cd backend/demand-service && npx vitest run src/tests/TS04_filtros_avancados.test.ts
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { PrismaClient, Categorias, Regioes, StatusDenuncia, NivelPrioridade } from '@prisma/client';
@@ -175,10 +175,12 @@ describe('TS04 - Filtros avançados combinados', () => {
   describe('Cenário: Filtro por paginação — listagem das próprias demandas', () => {
 
     it(
-      'Given 5 denúncias cadastradas para o cidadão, When GET /demandas/demands com ?page=1&limit=2, Then retorna 2 registros e pagination.totalPages correto',
+      'Given 5 denúncias cadastradas para o cidadão,' +
+        ' When GET /demandas/demands com ?page=1&limit=2, ' +
+        'Then retorna 2 registros e pagination.totalPages correto',
       async () => {
         const res = await request(app)
-          .get('/demandas/demands?page=1&limit=2')
+          .get('/demandas/my-demands?page=1&limit=2')
           .set('Authorization', `Bearer ${tokenCidadao}`);
 
         expect(res.status).toBe(200);
@@ -196,10 +198,12 @@ describe('TS04 - Filtros avançados combinados', () => {
   describe('Cenário: Página fora do range', () => {
 
     it(
-      'Given denúncias cadastradas, When GET /demandas/demands com ?page=999, Then retorna array vazio',
+      'Given denúncias cadastradas, ' +
+        'When GET /demandas/demands com ?page=999, ' +
+        'Then retorna array vazio',
       async () => {
         const res = await request(app)
-          .get('/demandas/demands?page=999&limit=20')
+          .get('/demandas/my-demands?page=999&limit=20')
           .set('Authorization', `Bearer ${tokenCidadao}`);
 
         expect(res.status).toBe(200);
@@ -214,10 +218,12 @@ describe('TS04 - Filtros avançados combinados', () => {
   describe('Cenário: Paginação no feed geral (GET /demandas/demands/feed)', () => {
 
     it(
-      'Given 5+ denúncias no banco, When GET /demandas/demands/feed com ?page=1&limit=2, Then retorna 2 registros com pagination correto',
+      'Given 5+ denúncias no banco, ' +
+        'When GET /demandas/feed com ?page=1&limit=2, ' +
+        'Then retorna 2 registros com pagination correto',
       async () => {
         const res = await request(app)
-          .get('/demandas/demands/feed?page=1&limit=2')
+          .get('/demandas/feed?page=1&limit=2')
           .set('Authorization', `Bearer ${tokenCidadao}`);
 
         expect(res.status).toBe(200);
@@ -233,10 +239,12 @@ describe('TS04 - Filtros avançados combinados', () => {
   describe('Cenário: Paginação para gestor (GET /demandas/gestor/demands)', () => {
 
     it(
-      'Given 5+ denúncias no banco, When gestor faz GET /demandas/gestor/demands com ?page=1&limit=2, Then retorna 2 registros',
+      'Given 5+ denúncias no banco,' +
+        ' When gestor faz GET /demandas/gestor/my-demands com ?page=1&limit=2,' +
+        ' Then retorna 2 registros',
       async () => {
         const res = await request(app)
-          .get('/demandas/gestor/demands?page=1&limit=2')
+          .get('/demandas/gestor?page=1&limit=2')
           .set('Authorization', `Bearer ${tokenGestor}`);
 
         expect(res.status).toBe(200);
@@ -254,10 +262,12 @@ describe('TS04 - Filtros avançados combinados', () => {
   describe('Cenário: Filtro por categoria', () => {
 
     it.skip(
-      'Given denúncias de categorias diferentes, When GET /demandas/demands/feed com ?categoria=ILUMINACAO_PUBLICA, Then retorna apenas da categoria filtrada',
+      'Given denúncias de categorias diferentes, ' +
+        'When GET /demandas/feed com ?categoria=ILUMINACAO_PUBLICA, ' +
+        'Then retorna apenas da categoria filtrada',
       async () => {
         const res = await request(app)
-          .get('/demandas/demands/feed?categoria=ILUMINACAO_PUBLICA')
+          .get('/demandas/feed?categoria=ILUMINACAO_PUBLICA')
           .set('Authorization', `Bearer ${tokenCidadao}`);
 
         expect(res.status).toBe(200);
@@ -273,10 +283,12 @@ describe('TS04 - Filtros avançados combinados', () => {
   describe('Cenário: Filtro por status', () => {
 
     it.skip(
-      'Given denúncias com status diferentes, When GET /demandas/demands/feed com ?status=ABERTA, Then retorna apenas as abertas',
+      'Given denúncias com status diferentes, ' +
+        'When GET /demandas/feed com ?status=ABERTA, ' +
+        'Then retorna apenas as abertas',
       async () => {
         const res = await request(app)
-          .get('/demandas/demands/feed?status=ABERTA')
+          .get('/demandas/feed?status=ABERTA')
           .set('Authorization', `Bearer ${tokenCidadao}`);
 
         expect(res.status).toBe(200);
@@ -292,10 +304,12 @@ describe('TS04 - Filtros avançados combinados', () => {
   describe('Cenário: Filtro por região', () => {
 
     it.skip(
-      'Given denúncias de regiões diferentes, When GET /demandas/demands/feed com ?regiao=AGRESTE, Then retorna apenas do Agreste',
+      'Given denúncias de regiões diferentes, ' +
+        'When GET /demandas/demands/feed com ?regiao=AGRESTE, ' +
+        'Then retorna apenas do Agreste',
       async () => {
         const res = await request(app)
-          .get('/demandas/demands/feed?regiao=AGRESTE')
+          .get('/demandas/feed?regiao=AGRESTE')
           .set('Authorization', `Bearer ${tokenCidadao}`);
 
         expect(res.status).toBe(200);
@@ -311,7 +325,9 @@ describe('TS04 - Filtros avançados combinados', () => {
   describe('Cenário: Filtro por prioridade', () => {
 
     it.skip(
-      'Given denúncias com prioridades diferentes, When GET /demandas/demands/feed com ?prioridade=ALTA, Then retorna apenas as de prioridade alta',
+      'Given denúncias com prioridades diferentes, ' +
+        'When GET /demandas/demands/feed com ?prioridade=ALTA, ' +
+        'Then retorna apenas as de prioridade alta',
       async () => {
         const res = await request(app)
           .get('/demandas/demands/feed?prioridade=ALTA')
@@ -330,10 +346,12 @@ describe('TS04 - Filtros avançados combinados', () => {
   describe('Cenário: Múltiplos filtros combinados', () => {
 
     it.skip(
-      'Given denúncias variadas, When aplica categoria + status ao mesmo tempo, Then retorna apenas registros que atendem ambos os filtros',
+      'Given denúncias variadas, ' +
+        'When aplica categoria + status ao mesmo tempo, ' +
+        'Then retorna apenas registros que atendem ambos os filtros',
       async () => {
         const res = await request(app)
-          .get('/demandas/demands/feed?categoria=ILUMINACAO_PUBLICA&status=ABERTA')
+          .get('/demandas/feed?categoria=ILUMINACAO_PUBLICA&status=ABERTA')
           .set('Authorization', `Bearer ${tokenCidadao}`);
 
         expect(res.status).toBe(200);
@@ -355,7 +373,9 @@ describe('TS04 - Filtros avançados combinados', () => {
   describe('Cenário: Filtro sem resultados', () => {
 
     it(
-      'Given cidadão sem demandas cadastradas, When GET /demandas/demands, Then retorna data vazio com total = 0',
+      'Given cidadão sem demandas cadastradas, ' +
+        'When GET /demandas/demands, ' +
+        'Then retorna data vazio com total = 0',
       async () => {
         const [novoRow] = await prisma.$queryRaw<{ id: number }[]>`
           INSERT INTO usuarios (nome, email, senha, papel)
@@ -366,7 +386,7 @@ describe('TS04 - Filtros avançados combinados', () => {
         const tokenSemDemanda = jwt.sign({ userId: novoRow.id, papel: 'cidadao' }, SECRET);
 
         const res = await request(app)
-          .get('/demandas/demands')
+          .get('/demandas/my-demands')
           .set('Authorization', `Bearer ${tokenSemDemanda}`);
 
         expect(res.status).toBe(200);
@@ -382,10 +402,12 @@ describe('TS04 - Filtros avançados combinados', () => {
     );
 
     it.skip(
-      'Given denúncias cadastradas, When aplica filtro que não corresponde a nenhum registro, Then retorna data vazio com total = 0',
+      'Given denúncias cadastradas, ' +
+        'When aplica filtro que não corresponde a nenhum registro, ' +
+        'Then retorna data vazio com total = 0',
       async () => {
         const res = await request(app)
-          .get('/demandas/demands/feed?categoria=FISCALIZACAO&status=EM_ANALISE&regiao=OUTRA')
+          .get('/demandas/feed?categoria=FISCALIZACAO&status=EM_ANALISE&regiao=OUTRA')
           .set('Authorization', `Bearer ${tokenCidadao}`);
 
         expect(res.status).toBe(200);
