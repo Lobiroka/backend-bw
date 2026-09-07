@@ -10,10 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-    # Opcional, caso use banco local no docker-compose,
-    # mas o passo abaixo já sobe o compose geral.
-
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
