@@ -59,6 +59,7 @@ A suíte completa de testes de integração e BDD encontra-se versionada na past
     cd demand-service
    
 4. **Criar o .ENV**
+   ```bash
    DATABASE_URL="postgresql://postgres.seu_projeto_id:sua_senha@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
    JWT_SECRET=change-me
 
