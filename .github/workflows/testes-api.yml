@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Criar arquivo .env temporário para o Docker
+      - name: Criar .env.local para o Docker Compose
         run: |
           echo "DATABASE_URL_AUTH=postgresql://postgres:postgres@localhost:5432/auth" >> .env.local
           echo "DATABASE_URL_DEMAND=postgresql://postgres:postgres@localhost:5432/demand" >> .env.local
@@ -37,13 +37,12 @@ jobs:
       - name: Configurar Banco de Testes (Prisma)
         working-directory: ./demand-service
         env:
-         DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/demand"
         run: npx prisma db push
 
       - name: Executar testes automatizados (Vitest)
         working-directory: ./demand-service
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/demand"
+          JWT_SECRET: 'smartcity-dev-secret'
         run: npx vitest run
-
