@@ -36,6 +36,8 @@ jobs:
 
       - name: Configurar Banco de Testes (Prisma)
         working-directory: ./demand-service
+        env:
+         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma db push
 
       - name: Executar testes automatizados (Vitest)
