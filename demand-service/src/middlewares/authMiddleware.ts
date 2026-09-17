@@ -1,34 +1,36 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-
-const SECRET = process.env.JWT_SECRET || 'change-me';
+import { verifyAccessToken } from '../config/verifyAccessToken';
+import type { AuthenticatedUser } from '../types/authenticatedUser';
 
 export interface AuthRequest extends Request {
-  user?: { userId: number; papel: 'cidadao' | 'gestor'; email?: string };
+  user?: AuthenticatedUser;
 }
 
-export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
+export async function authMiddleware(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+) {
   const authHeader = req.headers.authorization;
+  const match = authHeader?.match(/^Bearer\s+(\S+)$/i);
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token não fornecido' });
+  if (!match) {
+    return res.status(401).json({ error: 'Token não fornecido ou malformado' });
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, SECRET) as { userId: number; papel: 'cidadao' | 'gestor'; email?: string };
-    req.user = decoded;
-    next();
+    req.user = await verifyAccessToken(match[1]);
   } catch {
-    return res.status(401).json({ error: 'Token inválido ou expirado' });
+    return res.status(401).json({ error: 'Não foi possível validar o token' });
   }
+
+  next();
 }
 
-// Garante que apenas cidadãos acessem a rota
+
 export function apenascidadao(req: AuthRequest, res: Response, next: NextFunction) {
-  if (req.user?.papel !== 'cidadao') {
-    return res.status(403).json({ error: 'Acesso restrito a cidadãos' });
+  if (!req.user?.roles.includes('cidadao')) {
+    return res.status(403).json({ error: 'Acesso Restrito a cidadaos' });
   }
   next();
 }

@@ -12,11 +12,11 @@ export type CreateDenunciaInput = {
   cidadaoId: number;
 };
 
-export async function findOrCreateCidadao(usuarioId: number) {
+export async function findOrCreateCidadao(subject: string) {
   return prisma.cidadao.upsert({
-    where: { usuario_id: usuarioId },
+    where: { keycloak_sub: subject },
     update: {},
-    create: { usuario_id: usuarioId },
+    create: { keycloak_sub: subject },
   });
 }
 
@@ -38,6 +38,8 @@ export async function deleteDenunciaById(id: number) {
   return prisma.denuncia.delete({ where: { id_denuncia: id } });
 }
 
-export async function deleteCidadaoByUsuarioId(usuarioId: number) {
-  return prisma.cidadao.delete({ where: { usuario_id: usuarioId } });
+export async function deleteCidadaoByUsuarioId(subject:string) {
+  return prisma.cidadao.delete({
+    where: { keycloak_sub: subject },
+  });
 }

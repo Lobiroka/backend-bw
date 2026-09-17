@@ -10,8 +10,8 @@ export type CreateDemandInput = {
   endereco: string;
 };
 
-export async function createDemand(usuarioId: number, data: CreateDemandInput) {
-  const cidadao = await repo.findOrCreateCidadao(usuarioId);
+export async function createDemand(subject:string, data: CreateDemandInput) {
+  const cidadao = await repo.findOrCreateCidadao(subject);
 
   return repo.createDenuncia({
     ...data,

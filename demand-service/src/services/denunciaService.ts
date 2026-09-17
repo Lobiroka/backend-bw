@@ -9,6 +9,7 @@ import { httpError } from '../utils/httpError';
 import { buildPaginatedResult, PaginatedResult, PaginationParams } from '../utils/pagination';
 import { publishDenunciaStatusEvent } from '../config/redis';
 
+
 export interface CreateDenunciaInput {
   titulo: string;
   categoria: Categorias;
@@ -24,21 +25,22 @@ const REGIOES_VALIDAS = new Set<string>(Object.values(Regioes));
 const STATUS_VALIDOS = new Set<string>(Object.values(StatusDenuncia));
 const PRIORIDADES_VALIDAS = new Set<string>(Object.values(NivelPrioridade));
 
-async function resolveCidadaoId(usuarioId: number): Promise<number> {
+async function resolveCidadaoId(subject: string): Promise<number> {
   const cidadao = await prisma.cidadao.upsert({
-    where: { usuario_id: usuarioId },
+    where: { keycloak_sub: subject },
     update: {},
-    create: { usuario_id: usuarioId },
+    create: { keycloak_sub: subject },
   });
 
   return cidadao.id_cidadao;
 }
 
-async function resolveGestorId(usuarioId: number): Promise<number> {
+async function resolveGestorId(subject: string): Promise<number> {
   const gestor = await prisma.gestor.upsert({
-    where: { usuario_id: usuarioId },
+
+    where: { keycloak_sub: subject },
     update: {},
-    create: { usuario_id: usuarioId },
+    create: { keycloak_sub: subject },
   });
 
   return gestor.id_gestor;
@@ -101,8 +103,8 @@ export function validateCreateDenunciaInput(body: Record<string, unknown>): Crea
   };
 }
 
-export async function createDenuncia(usuarioId: number, input: CreateDenunciaInput, emailSolicitante?: string) {
-  const cidadaoId = await resolveCidadaoId(usuarioId);
+export async function createDenuncia(subject: string, input: CreateDenunciaInput, emailSolicitante?: string) {
+  const cidadaoId = await resolveCidadaoId(subject);
 
   const imagensData = input.imagens && input.imagens.length > 0
     ? {
@@ -132,10 +134,10 @@ export async function createDenuncia(usuarioId: number, input: CreateDenunciaInp
 }
 
 export async function listDenunciasByCidadao(
-  usuarioId: number,
+  subject: string,
   pagination: PaginationParams
 ): Promise<PaginatedResult<Awaited<ReturnType<typeof prisma.denuncia.findMany>>[number]>> {
-  const cidadaoId = await resolveCidadaoId(usuarioId);
+  const cidadaoId = await resolveCidadaoId(subject);
 
   const where = { cidadao_id: cidadaoId };
 
@@ -153,8 +155,8 @@ export async function listDenunciasByCidadao(
   return buildPaginatedResult(data, total, pagination);
 }
 
-export async function getDenunciaById(usuarioId: number, denunciaId: number) {
-  const cidadaoId = await resolveCidadaoId(usuarioId);
+export async function getDenunciaById(subject: string, denunciaId: number) {
+  const cidadaoId = await resolveCidadaoId(subject);
 
   const denuncia = await prisma.denuncia.findFirst({
     where: {
@@ -177,7 +179,7 @@ export async function getDenunciaById(usuarioId: number, denunciaId: number) {
 }
 
 export async function updateDenunciaStatus(
-  usuarioId: number,
+  subject: string,
   denunciaId: number,
   novoStatus: StatusDenuncia
 ) {
@@ -185,7 +187,7 @@ export async function updateDenunciaStatus(
     throw httpError('status inválido', 400);
   }
 
-  const gestorId = await resolveGestorId(usuarioId);
+  const gestorId = await resolveGestorId(subject);
 
   const denunciaExistente = await prisma.denuncia.findUnique({
     where: { id_denuncia: denunciaId },
@@ -309,16 +311,16 @@ export function validatePrioridadeInput(prioridade: unknown): NivelPrioridade {
 }
 
 export async function updateDenunciaPrioridade(
-  usuarioId: number,
+  subject: string,
   denunciaId: number,
   novaPrioridade: NivelPrioridade
 ) {
   console.log("=== INICIANDO UPDATE DE PRIORIDADE ===");
-  console.log("-> ID do Usuário Recebido:", usuarioId);
+  console.log("-> ID do Usuário Recebido:", subject);
   console.log("-> ID da Denúncia Recebido:", denunciaId);
   console.log("-> Nova Prioridade Recebida:", novaPrioridade);
 
-  const gestorId = await resolveGestorId(usuarioId);
+  const gestorId = await resolveGestorId(subject);
   console.log("-> ID do Gestor Resolvido no Banco:", gestorId);
 
   const denunciaExistente = await prisma.denuncia.findUnique({

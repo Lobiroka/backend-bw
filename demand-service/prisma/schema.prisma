@@ -11,7 +11,7 @@ generator client {
 
 model Cidadao {
   id_cidadao Int        @id @default(autoincrement())
-  usuario_id Int        @unique 
+  keycloak_sub String @unique
   denuncias  Denuncia[]
 
   @@map("cidadaos")
@@ -20,7 +20,7 @@ model Cidadao {
 
 model Gestor {
   id_gestor  Int         @id @default(autoincrement())
-  usuario_id Int         @unique 
+  keycloak_sub String @unique
   historicos Historico[]
 
   @@map("gestores")

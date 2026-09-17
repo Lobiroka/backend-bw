@@ -1,35 +1,30 @@
 // TS02 [BDD] — Persistência de nova demanda urbana
 //
 // PRÉ-REQUISITOS:
-//   • PostgreSQL do demand-service rodando e acessível via DATABASE_URL_DEMAND
+//   • PostgreSQL do demand-service rodando e acessível via TEST_DATABASE_URL (banco exclusivo de testes)
 //   • Migrations aplicadas (prisma migrate deploy)
-//   • Variável JWT_SECRET definida (ou usa padrão 'smartcity-dev-secret')
+//   • Tokens RSA locais e issuer de teste configurados por setupAuth.ts
 //
-// DEPENDÊNCIA DE VERSÃO:
-//   Este arquivo testa o endpoint POST /demandas conforme a versão branch do demandRoutes.ts
-//   (router.post('/', authMiddleware, apenascidadao, createDemand)).
-//   O JWT usa o campo `papel` (não `role`), compatível com o middleware `apenascidadao`.
-//
-//   ATENÇÃO: demandRoutes.ts e authMiddleware.ts têm conflitos de merge não resolvidos.
-//   Para este teste funcionar, resolva os conflitos escolhendo a versão branch (mais simples).
-//   Veja a documentação completa no chat.
+// AUTENTICAÇÃO:
+//   O middleware valida assinatura RSA, issuer, audience e papéis do token.
+//   Apenas a busca da chave pública é substituída nos testes.
 //
 // COMANDO:
 //   cd backend/demand-service && npx vitest run src/tests/TS02_persistencia_demanda.bdd.test.ts
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import jwt from 'jsonwebtoken';
+import { randomUUID } from 'node:crypto';
+import { createTestToken } from './helpers/authToken';
 import { PrismaClient } from '@prisma/client';
 import app from '../app';
 
 const prisma = new PrismaClient();
-const SECRET = process.env.JWT_SECRET || 'smartcity-dev-secret';
 
 let token: string;
 let tokenGestor: string;
-let usuarioIdCidadao: number;
-let usuarioIdGestor: number;
+const subjectCidadao = randomUUID();
+const subjectGestor = randomUUID();
 
 const idsParaLimpar: number[] = [];
 
@@ -45,26 +40,8 @@ const demandaValida = {
 };
 
 beforeAll(async () => {
-  // Emails distintos do TS02 original para evitar conflitos de ID entre suítes paralelas
-  const [cidadaoRow] = await prisma.$queryRaw<{ id: number }[]>`
-    INSERT INTO usuarios (nome, email, senha, papel)
-    VALUES ('Cidadao TS02BDD', 'ts02bdd.cidadao@test.com', 'hash', 'CIDADAO')
-    ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome
-    RETURNING id
-  `;
-  const [gestorRow] = await prisma.$queryRaw<{ id: number }[]>`
-    INSERT INTO usuarios (nome, email, senha, papel)
-    VALUES ('Gestor TS02BDD', 'ts02bdd.gestor@test.com', 'hash', 'GESTOR')
-    ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome
-    RETURNING id
-  `;
-
-  usuarioIdCidadao = cidadaoRow.id;
-  usuarioIdGestor = gestorRow.id;
-
-  // `papel` é o campo lido pelo middleware `apenascidadao` (versão branch)
-  token = jwt.sign({ userId: usuarioIdCidadao, papel: 'cidadao' }, SECRET);
-  tokenGestor = jwt.sign({ userId: usuarioIdGestor, papel: 'gestor' }, SECRET);
+  token = createTestToken(subjectCidadao, ['cidadao']);
+  tokenGestor = createTestToken(subjectGestor, ['gestor']);
 });
 
 afterAll(async () => {
@@ -72,20 +49,16 @@ afterAll(async () => {
     await prisma.denuncia.deleteMany({
         where: {
             cidadao: {
-                usuario_id: { in: [usuarioIdCidadao, usuarioIdGestor] }
+                keycloak_sub: { in: [subjectCidadao, subjectGestor] }
             }
         }
     });
 
     // 2. Agora apaga os registros de cidadãos com segurança
     await prisma.cidadao.deleteMany({
-        where: { usuario_id: { in: [usuarioIdCidadao, usuarioIdGestor] } },
+        where: { keycloak_sub: { in: [subjectCidadao, subjectGestor] } },
     });
 
-    // 3. Por fim, apaga os usuários base
-    await prisma.$executeRawUnsafe(
-        `DELETE FROM usuarios WHERE email IN ('ts02bdd.cidadao@test.com', 'ts02bdd.gestor@test.com')`
-    );
 
     await prisma.$disconnect();
 });
@@ -259,7 +232,7 @@ describe('TS02 [BDD] - Persistência de nova demanda urbana', () => {
 
         // O upsert em resolveCidadaoId não pode criar duplicatas — deve haver exatamente 1 registro
         const cidadaos = await prisma.cidadao.findMany({
-          where: { usuario_id: usuarioIdCidadao },
+          where: { keycloak_sub: subjectCidadao },
         });
         expect(cidadaos.length).toBe(1);
 

@@ -1,17 +1,17 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import jwt from 'jsonwebtoken';
+import { randomUUID } from 'node:crypto';
+import { createTestToken } from './helpers/authToken';
 import { PrismaClient } from '@prisma/client';
 import app from '../app';
 
 const prisma = new PrismaClient();
-const SECRET = process.env.JWT_SECRET || 'smartcity-dev-secret';
 
 let token: string;
 let tokenGestor: string;
-let usuarioIdTeste: number;
-let usuarioIdGestor: number;
+const subjectCidadao = randomUUID();
+const subjectGestor = randomUUID();
 
 const demandaValida = {
   titulo: 'Buraco na via',
@@ -26,34 +26,15 @@ const demandaValida = {
 const idsParaLimpar: number[] = [];
 
 beforeAll(async () => {
-  // demand-service não tem o model Usuario — SQL direto para satisfazer a FK no ambiente local
-  const [cidadaoRow] = await prisma.$queryRaw<{ id: number }[]>`
-    INSERT INTO usuarios (nome, email, senha, papel)
-    VALUES ('Cidadao TS02', 'ts02.cidadao@test.com', 'hash', 'CIDADAO')
-    ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome
-    RETURNING id
-  `;
-  const [gestorRow] = await prisma.$queryRaw<{ id: number }[]>`
-    INSERT INTO usuarios (nome, email, senha, papel)
-    VALUES ('Gestor TS02', 'ts02.gestor@test.com', 'hash', 'GESTOR')
-    ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome
-    RETURNING id
-  `;
-
-  usuarioIdTeste = cidadaoRow.id;
-  usuarioIdGestor = gestorRow.id;
-  token = jwt.sign({ userId: usuarioIdTeste, papel: 'cidadao' }, SECRET);
-  tokenGestor = jwt.sign({ userId: usuarioIdGestor, papel: 'gestor' }, SECRET);
+  token = createTestToken(subjectCidadao, ['cidadao']);
+  tokenGestor = createTestToken(subjectGestor, ['gestor']);
 });
 
 afterAll(async () => {
   if (idsParaLimpar.length > 0) {
     await prisma.denuncia.deleteMany({ where: { id_denuncia: { in: idsParaLimpar } } });
   }
-  await prisma.cidadao.deleteMany({ where: { usuario_id: { in: [usuarioIdTeste, usuarioIdGestor] } } });
-  await prisma.$executeRawUnsafe(
-    `DELETE FROM usuarios WHERE email IN ('ts02.cidadao@test.com', 'ts02.gestor@test.com')`
-  );
+  await prisma.cidadao.deleteMany({ where: { keycloak_sub: { in: [subjectCidadao, subjectGestor] } } });
   await prisma.$disconnect();
 });
 
@@ -157,7 +138,7 @@ describe('TS02 - Persistência de nova demanda urbana', () => {
       expect(res1.status).toBe(201);
       expect(res2.status).toBe(201);
 
-      const cidadaos = await prisma.cidadao.findMany({ where: { usuario_id: usuarioIdTeste } });
+      const cidadaos = await prisma.cidadao.findMany({ where: { keycloak_sub: subjectCidadao } });
       expect(cidadaos.length).toBe(1);
 
       idsParaLimpar.push(res1.body.id_denuncia, res2.body.id_denuncia);

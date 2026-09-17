@@ -29,7 +29,7 @@ export async function atualizarStatusDenuncia(req: AuthRequest, res: Response, n
     const novoStatus = denunciaService.validateStatusInput(req.body.status);
 
     const resultado = await denunciaService.updateDenunciaStatus(
-      req.user!.userId,
+      req.user!.subject,
       denunciaId,
       novoStatus
     );
@@ -46,7 +46,7 @@ export async function atualizarPrioridadeDenuncia(req: AuthRequest, res: Respons
     const novaPrioridade = denunciaService.validatePrioridadeInput(req.body.prioridade);
 
     const resultado = await denunciaService.updateDenunciaPrioridade(
-      req.user!.userId,
+      req.user!.subject,
       denunciaId,
       novaPrioridade
     );

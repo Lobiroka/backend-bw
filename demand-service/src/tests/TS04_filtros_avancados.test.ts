@@ -1,17 +1,17 @@
 // TS04 — Filtros avançados combinados (BDD)
 //
 // PRÉ-REQUISITOS:
-//   • PostgreSQL do demand-service rodando e acessível via DATABASE_URL_DEMAND
+//   • PostgreSQL do demand-service rodando e acessível via TEST_DATABASE_URL (banco exclusivo de testes)
 //   • Redis rodando (demand-service imports redis no config/redis.ts)
 //   • Migrations aplicadas (prisma migrate deploy)
-//   • Variável JWT_SECRET definida (ou usa padrão 'smartcity-dev-secret')
+//   • Tokens RSA locais e issuer de teste configurados por setupAuth.ts
 //
 // ENDPOINTS TESTADOS:
 //   GET /demandas/demands      → listMinhasDenuncias  (cidadão)
 //   GET /demandas/demands/feed     → listarFeedDenuncias  (cidadão)
 //   GET /demandas/gestor/demands   → listarTodasDenuncias (gestor)
 //
-// Os conflitos de merge foram resolvidos. O JWT usa o campo `papel` em todos os testes.
+// Os tokens de teste usam sub e realm_access.roles, como os tokens do Keycloak.
 //
 // FILTROS SUPORTADOS PELO BACKEND ATUAL:
 //   ✅ ?page=N&limit=N  (paginação — implementada em parsePagination)
@@ -26,17 +26,17 @@
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
-import jwt from 'jsonwebtoken';
+import { randomUUID } from 'node:crypto';
+import { createTestToken } from './helpers/authToken';
 import { PrismaClient, Categorias, Regioes, StatusDenuncia, NivelPrioridade } from '@prisma/client';
 import app from '../app';
 
 const prisma = new PrismaClient();
-const SECRET = process.env.JWT_SECRET || 'smartcity-dev-secret';
 
 let tokenCidadao: string;
 let tokenGestor: string;
-let usuarioIdCidadao: number;
-let usuarioIdGestor: number;
+const subjectCidadao = randomUUID();
+const subjectGestor = randomUUID();
 let cidadaoId: number;
 
 const idsParaLimpar: number[] = [];
@@ -99,30 +99,14 @@ const dadosSeed: Array<{
 ];
 
 beforeAll(async () => {
-  const [cidadaoRow] = await prisma.$queryRaw<{ id: number }[]>`
-    INSERT INTO usuarios (nome, email, senha, papel)
-    VALUES ('Cidadao TS04', 'ts04.cidadao@test.com', 'hash', 'CIDADAO')
-    ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome
-    RETURNING id
-  `;
-  const [gestorRow] = await prisma.$queryRaw<{ id: number }[]>`
-    INSERT INTO usuarios (nome, email, senha, papel)
-    VALUES ('Gestor TS04', 'ts04.gestor@test.com', 'hash', 'GESTOR')
-    ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome
-    RETURNING id
-  `;
-
-  usuarioIdCidadao = cidadaoRow.id;
-  usuarioIdGestor = gestorRow.id;
-
-  tokenCidadao = jwt.sign({ userId: usuarioIdCidadao, papel: 'cidadao' }, SECRET);
-  tokenGestor = jwt.sign({ userId: usuarioIdGestor, papel: 'gestor' }, SECRET);
+  tokenCidadao = createTestToken(subjectCidadao, ['cidadao']);
+  tokenGestor = createTestToken(subjectGestor, ['gestor']);
 
   // Garante entrada na tabela cidadaos (o service faz upsert, mas antecipamos aqui para o seed)
   const cidadao = await prisma.cidadao.upsert({
-    where: { usuario_id: usuarioIdCidadao },
+    where: { keycloak_sub: subjectCidadao },
     update: {},
-    create: { usuario_id: usuarioIdCidadao },
+    create: { keycloak_sub: subjectCidadao },
   });
   cidadaoId = cidadao.id_cidadao;
 
@@ -148,10 +132,7 @@ afterAll(async () => {
   if (idsParaLimpar.length > 0) {
     await prisma.denuncia.deleteMany({ where: { id_denuncia: { in: idsParaLimpar } } });
   }
-  await prisma.cidadao.deleteMany({ where: { usuario_id: usuarioIdCidadao } });
-  await prisma.$executeRawUnsafe(
-    `DELETE FROM usuarios WHERE email IN ('ts04.cidadao@test.com', 'ts04.gestor@test.com')`
-  );
+  await prisma.cidadao.deleteMany({ where: { keycloak_sub: subjectCidadao } });
   await prisma.$disconnect();
 });
 
@@ -377,13 +358,8 @@ describe('TS04 - Filtros avançados combinados', () => {
         'When GET /demandas/demands, ' +
         'Then retorna data vazio com total = 0',
       async () => {
-        const [novoRow] = await prisma.$queryRaw<{ id: number }[]>`
-          INSERT INTO usuarios (nome, email, senha, papel)
-          VALUES ('Sem Demandas TS04', 'ts04.semdemanda@test.com', 'hash', 'CIDADAO')
-          ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome
-          RETURNING id
-        `;
-        const tokenSemDemanda = jwt.sign({ userId: novoRow.id, papel: 'cidadao' }, SECRET);
+        const subjectSemDemanda = randomUUID();
+        const tokenSemDemanda = createTestToken(subjectSemDemanda, ['cidadao']);
 
         const res = await request(app)
           .get('/demandas/my-demands')
@@ -394,10 +370,7 @@ describe('TS04 - Filtros avançados combinados', () => {
         expect(res.body.pagination.total).toBe(0);
 
         // Cleanup do usuário auxiliar
-        await prisma.cidadao.deleteMany({ where: { usuario_id: novoRow.id } });
-        await prisma.$executeRawUnsafe(
-          `DELETE FROM usuarios WHERE email = 'ts04.semdemanda@test.com'`
-        );
+        await prisma.cidadao.deleteMany({ where: { keycloak_sub: subjectSemDemanda } });
       }
     );
 
