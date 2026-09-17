@@ -23,7 +23,7 @@ export async function startEventSubscriber() {
 export async function startQueueWorker() {
   const redis = await getRedisQueueClient();
 
-  (async function poll() {
+  await (async function poll() {
     while (true) {
       try {
         const result = await redis.brPop(REDIS_QUEUE, 0);

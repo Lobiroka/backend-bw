@@ -87,7 +87,7 @@ const server = createServer(async (req, res) => {
         }
 
         const apiResponse = await fetch(
-            'http://localhost:3002/demandas/my-demands',
+            'http://localhost:8080/demands/my-demands',
             {
                 headers: {
                     Authorization: `Bearer ${tokens.access_token}`,

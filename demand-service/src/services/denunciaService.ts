@@ -25,7 +25,7 @@ const REGIOES_VALIDAS = new Set<string>(Object.values(Regioes));
 const STATUS_VALIDOS = new Set<string>(Object.values(StatusDenuncia));
 const PRIORIDADES_VALIDAS = new Set<string>(Object.values(NivelPrioridade));
 
-async function resolveCidadaoId(subject: string): Promise<number> {
+async function resolveCidadaoId(subject: string) {
   const cidadao = await prisma.cidadao.upsert({
     where: { keycloak_sub: subject },
     update: {},
@@ -35,7 +35,7 @@ async function resolveCidadaoId(subject: string): Promise<number> {
   return cidadao.id_cidadao;
 }
 
-async function resolveGestorId(subject: string): Promise<number> {
+async function resolveGestorId(subject: string) {
   const gestor = await prisma.gestor.upsert({
 
     where: { keycloak_sub: subject },

@@ -2,12 +2,8 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { getMetrics, refreshMetricsCache } from '../services/metricsService';
 
-export async function getKpis(req: AuthRequest, res: Response, next: NextFunction) {
+export async function getKpis(_req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    if (req.user?.papel !== 'gestor') {
-      return res.status(403).json({ error: 'Acesso negado para este perfil' });
-    }
-
     const metrics = await getMetrics();
     return res.json(metrics);
   } catch (err) {
@@ -15,11 +11,8 @@ export async function getKpis(req: AuthRequest, res: Response, next: NextFunctio
   }
 }
 
-export async function refreshKpis(req: AuthRequest, res: Response, next: NextFunction) {
+export async function refreshKpis(_req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    if (req.user?.papel !== 'gestor') {
-      return res.status(403).json({ error: 'Acesso negado para este perfil' });
-    }
 
     const metrics = await refreshMetricsCache();
     return res.json(metrics);

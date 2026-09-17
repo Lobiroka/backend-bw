@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 
 const app = express();
 
-const AUTH_URL = process.env.AUTH_SERVICE_URL ?? 'http://localhost:3001';
+
 const DEMAND_URL = process.env.DEMAND_SERVICE_URL ?? 'http://localhost:3002';
 const METRICS_URL = process.env.METRICS_SERVICE_URL ?? 'http://localhost:3003';
 
@@ -44,7 +44,6 @@ app.get('/ping', (_req, res) => res.json({ status: 'ok' }));
 
 app.get('/warmup', async (_req, res) => {
   Promise.allSettled([
-    fetch(`${AUTH_URL}/health`),
     fetch(`${DEMAND_URL}/health`),
     fetch(`${METRICS_URL}/health`),
   ]);
@@ -54,7 +53,6 @@ app.get('/warmup', async (_req, res) => {
 // Rota de Health Check do Gateway e dos Serviços
 app.get('/health', async (_req, res) => {
   const services = await Promise.all([
-    checkService('auth-service', AUTH_URL),
     checkService('demand-service', DEMAND_URL),
     checkService('metrics-service', METRICS_URL),
   ]);
@@ -67,14 +65,6 @@ app.get('/health', async (_req, res) => {
   });
 });
 
-// Proxy para o Serviço de Autenticação
-app.use(
-  '/auth',
-  createProxyMiddleware({
-    target: AUTH_URL,
-    changeOrigin: true,
-  })
-);
 
 // Proxy para o Serviço de Métricas
 app.use(

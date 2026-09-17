@@ -1,21 +1,5 @@
 services:
 
-  postgres:
-    image: postgres:15-alpine
-    container_name: smartcity_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: demand
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d demand"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: smartcity_redis
@@ -28,21 +12,6 @@ services:
       timeout: 5s
       retries: 5
 
-  auth-service:
-    build: ./auth-service
-    container_name: smartcity_auth
-    restart: always
-    env_file:
-      - .env.local
-    environment:
-      PORT: 3001
-      DATABASE_URL_AUTH: ${DATABASE_URL_AUTH}
-    ports:
-      - "3001:3001"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   demand-service:
     build: ./demand-service
     container_name: smartcity_demand
@@ -52,12 +21,10 @@ services:
     environment:
       PORT: 3002
       REDIS_URL: redis://redis:6379
-      DATABASE_URL_DEMAND: ${DATABASE_URL_DEMAND}
+      DATABASE_URL: ${DATABASE_URL_DEMAND:?Defina DATABASE_URL_DEMAND}
     ports:
       - "3002:3002"
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -74,8 +41,6 @@ services:
     ports:
       - "3003:3003"
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -87,12 +52,10 @@ services:
       - .env.local
     environment:
       PORT: 8080
-      AUTH_SERVICE_URL: http://auth-service:3001
       DEMAND_SERVICE_URL: http://demand-service:3002
       METRICS_SERVICE_URL: http://metrics-service:3003
     ports:
       - "8080:8080"
     depends_on:
-      - auth-service
       - demand-service
       - metrics-service
